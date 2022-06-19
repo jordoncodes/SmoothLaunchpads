@@ -7,7 +7,7 @@ public class VelocityUtil {
         double gravity = 0.115;
         int difference = to.getBlockY() - from.getBlockY();
         double distHorizontal = Math.sqrt(squaredDist(from, to));
-        double max = Math.max(heightGain, (difference + heightGain));
+        double max = Math.abs(heightGain)==heightGain ? Math.max(heightGain, (difference + heightGain)) : Math.min(heightGain, (difference + heightGain));
         double a = -distHorizontal * distHorizontal / (4 * max);
         double c = -difference;
         double s = -distHorizontal / (2 * a) - Math.sqrt(distHorizontal * distHorizontal - 4 * a * c) / (2 * a);

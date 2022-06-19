@@ -18,7 +18,6 @@ public final class SmoothLaunchpads extends JavaPlugin {
 
     @Override
     public void onDisable() {
-
     }
 
 

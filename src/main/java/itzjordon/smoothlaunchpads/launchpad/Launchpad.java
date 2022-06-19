@@ -6,18 +6,19 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import de.tr7zw.changeme.nbtapi.NBTCompound;
+import de.tr7zw.changeme.nbtapi.NBTContainer;
+import de.tr7zw.changeme.nbtapi.NBTEntity;
 import itzjordon.smoothlaunchpads.SmoothLaunchpads;
 import itzjordon.smoothlaunchpads.util.VelocityUtil;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Sign;
-import org.bukkit.entity.EnderPearl;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -27,9 +28,12 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.entity.EntityDismountEvent;
+import static itzjordon.smoothlaunchpads.util.LocationUtils.*;
 
 import net.md_5.bungee.api.ChatColor;
 
@@ -50,18 +54,15 @@ public class Launchpad implements Listener {
 							String coords = sign.getLine(2);
 							coords = coords.replaceAll(Pattern.compile(",|[x-z]|:").pattern(), "").replaceAll("  ", " ");
 							List<Double> newCoords = Arrays.stream(coords.split(Pattern.quote(" "))).filter(s -> s!=null&&!s.isEmpty()).map(Double::parseDouble).collect(Collectors.toList());
-							Vector target = new Location(e.getPlayer().getWorld(), newCoords.get(0), newCoords.get(1), newCoords.get(2)).toVector();
-							Vector pos = e.getClickedBlock().getLocation().add(0, 1, 0).toVector();
-							Vector velocity = VelocityUtil.velocityForLaunchpad(pos, target, 1);
-							Location l = e.getClickedBlock().getLocation().add(0, 1.25, 0);
-							Location toTp = l.clone().getBlock().getLocation().add(0.5, 2, 0.5);
-							toTp.setPitch(e.getPlayer().getLocation().getPitch());
-							toTp.setYaw(e.getPlayer().getLocation().getYaw());
-							e.getPlayer().teleport(toTp);
+							Location l = e.getClickedBlock().getLocation().getBlock().getLocation().add(0.5, 1.25, 0.5);
+
 							new BukkitRunnable() {
 								@Override
 								public void run() {
-									Entity en = l.getWorld().spawnEntity(l, EntityType.SNOWBALL);
+									Entity en = l.getWorld().spawnEntity(l, EntityType.ENDERMITE);
+									NBTEntity nbte = new NBTEntity(en);
+									((LivingEntity)en).addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 32767, 10, true, false));
+									nbte.mergeCompound(new NBTContainer("{Silent:1,Invulnerable:1,Invisible:1}"));
 									if (en == null) {
 										return;
 									}
@@ -73,9 +74,43 @@ public class Launchpad implements Listener {
 										}catch (Error|Exception ignored){};
 									}
 									en.setPassenger(e.getPlayer());
+									Vector target = new Location(en.getWorld(), newCoords.get(0), newCoords.get(1), newCoords.get(2)).toVector();
+
+									double dX,dZ;
+									dX = target.getX() - en.getLocation().getX();
+									dZ = target.getZ() - en.getLocation().getZ();
+
+									double dXZ = dX+dZ;
+
+
+
+									Bukkit.getServer().broadcastMessage(en.getLocation().toVector().toString());
+
 									en.teleport(l.clone().add(0,2,0));
-									Vector veloc = velocity.clone();
-									en.setVelocity(velocity.multiply(0.65).setY(veloc.getY()));
+									Bukkit.getServer().broadcastMessage(en.getLocation().toVector().toString());
+									final Vector veloc = new Vector(0, 0.65, 0);
+									int timesDoneTotal = 1 + (int) (dXZ/20);
+
+									en.setVelocity(veloc);
+									new BukkitRunnable() {
+										int timesDone = 0;
+										@Override
+										public void run() {
+											timesDone++;
+											if (en.isDead() || en.getPassenger() == null) {
+												en.remove();
+												cancel();
+												return;
+											}
+											Vector pos = en.getLocation().toVector();
+											Vector veloc2 = VelocityUtil.velocityForLaunchpad(pos, target, 1);
+											en.setVelocity(en.getVelocity().add(new Vector(veloc2.getX()*0.245, en.getLocation().getY()<target.getY() ? ((target.getY()-en.getLocation().getY())/2)*0.03 : (timesDone<timesDoneTotal?0.015:0), veloc2.getZ()*0.245)));
+											if (en.getLocation().distance(target.toLocation(en.getWorld())) < 2) {
+												en.getPassenger().teleport(en.getPassenger().getLocation().add(0.5, 0.5, 0.5));
+												en.remove();
+											}
+										}
+									}.runTaskTimer(SmoothLaunchpads.getInstance(), 1, 1);
 								}
 							}.runTaskLater(plugin, 5);
 						}
@@ -88,27 +123,29 @@ public class Launchpad implements Listener {
 			ex.printStackTrace();
 		}
 	}
-	
+
+
 	@EventHandler
 	public void onDismount(EntityDismountEvent e) {
+		System.out.println("DISMOUNTED!");
 		System.out.println(e.getDismounted().getType().toString());
-		if (e.getDismounted().getType() == EntityType.SNOWBALL) {
-			e.getDismounted().addPassenger(e.getEntity());
+		if (e.getDismounted().getType() == EntityType.ENDERMITE) {
+			e.getDismounted().setPassenger(e.getEntity());
 		}
 	}
 
 
-	@EventHandler
-	public void onEntityDamage(EntityDamageByEntityEvent e) {
-		if (e.getDamager().getType().equals(EntityType.SNOWBALL) && !e.getDamager().getPassengers().isEmpty()) {
-			e.setCancelled(true);
-		}
-	}
 	@EventHandler
 	public void onEnderPearlLand(ProjectileHitEvent e) {
-		if (e.getEntity().getPassenger() != null || !e.getEntity().getType().equals(EntityType.SNOWBALL)) {
+		System.out.println("PHE!");
+
+		if (e.getEntity().getPassenger() != null) {
 			return;
 		}
+		if (!e.getEntity().getType().equals(EntityType.ENDERMITE)) {
+			return;
+		}
+		System.out.println("IT LANDED! ");
 		Entity passenger = e.getEntity().getPassenger();
 		if (passenger instanceof Player) {
 			Player player = (Player) passenger;
@@ -121,7 +158,23 @@ public class Launchpad implements Listener {
 			}.runTaskLater(plugin, 5);
 		}
 	}
-	
+
+//	@EventHandler
+//	public void onEntityHit(EntityDamageByEntityEvent e) {
+//		if (e.getDamager() instanceof Endermite) {
+//			System.out.println("HIT AN ENTITY");
+//			if (e.getDamager().getPassenger() != null) {
+//				e.setCancelled(true);
+//				Location l = e.getDamager().getLocation().add(0,2,0);
+//				Entity en = l.getWorld().spawnEntity(l, EntityType.ENDERMITE);
+//				if (en == null) {
+//					return;
+//				}
+//				en.setPassenger(e.getEntity());
+//			}
+//		}
+//	}
+
 	@EventHandler
 	public void onSignChange(SignChangeEvent e) {
 		if (e.getPlayer().hasPermission("smoothlaunchpads.makesigns")) {
