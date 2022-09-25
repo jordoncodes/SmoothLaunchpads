@@ -44,7 +44,6 @@ public class Launchpad implements Listener {
 	public void onStepOnGoldPressurePlate(PlayerInteractEvent e) {
 		try {
 			if(e.getAction().equals(Action.PHYSICAL)) {
-				e.getPlayer().teleport(e.getPlayer());
 				if(e.getClickedBlock().getType().toString().contains("PLATE")) {
 					if (e.getClickedBlock().getLocation().subtract(0, 2, 0).getBlock().getType().toString().contains("SIGN")) {
 						Block block = e.getClickedBlock().getLocation().subtract(0, 2, 0).getBlock();
@@ -55,6 +54,10 @@ public class Launchpad implements Listener {
 							coords = coords.replaceAll(Pattern.compile(",|[x-z]|:").pattern(), "").replaceAll("  ", " ");
 							List<Double> newCoords = Arrays.stream(coords.split(Pattern.quote(" "))).filter(s -> s!=null&&!s.isEmpty()).map(Double::parseDouble).collect(Collectors.toList());
 							Location l = e.getClickedBlock().getLocation().getBlock().getLocation().add(0.5, 1.25, 0.5);
+
+//							Location tpLoc = e.getPlayer().getLocation().getBlock().getLocation().add(0.5, 0, 0.5);
+//							tpLoc.setY(e.getPlayer().getLocation().getY());
+//							e.getPlayer().teleport(tpLoc);
 
 							new BukkitRunnable() {
 								@Override
@@ -82,12 +85,7 @@ public class Launchpad implements Listener {
 
 									double dXZ = dX+dZ;
 
-
-
-									Bukkit.getServer().broadcastMessage(en.getLocation().toVector().toString());
-
 									en.teleport(l.clone().add(0,2,0));
-									Bukkit.getServer().broadcastMessage(en.getLocation().toVector().toString());
 									final Vector veloc = new Vector(0, 0.65, 0);
 									int timesDoneTotal = 1 + (int) (dXZ/20);
 
@@ -103,12 +101,14 @@ public class Launchpad implements Listener {
 												return;
 											}
 											Vector pos = en.getLocation().toVector();
+											double diff = target.getY()-pos.getY();
 											Vector veloc2 = VelocityUtil.velocityForLaunchpad(pos, target, 1);
 											en.setVelocity(en.getVelocity().add(new Vector(veloc2.getX()*0.245, en.getLocation().getY()<target.getY() ? ((target.getY()-en.getLocation().getY())/2)*0.03 : (timesDone<timesDoneTotal?0.015:0), veloc2.getZ()*0.245)));
 											if (en.getLocation().distance(target.toLocation(en.getWorld())) < 2) {
 												en.getPassenger().teleport(en.getPassenger().getLocation().add(0.5, 0.5, 0.5));
 												en.remove();
 											}
+
 										}
 									}.runTaskTimer(SmoothLaunchpads.getInstance(), 1, 1);
 								}
@@ -127,37 +127,34 @@ public class Launchpad implements Listener {
 
 	@EventHandler
 	public void onDismount(EntityDismountEvent e) {
-		System.out.println("DISMOUNTED!");
-		System.out.println(e.getDismounted().getType().toString());
 		if (e.getDismounted().getType() == EntityType.ENDERMITE) {
 			e.getDismounted().setPassenger(e.getEntity());
 		}
 	}
 
-
-	@EventHandler
-	public void onEnderPearlLand(ProjectileHitEvent e) {
-		System.out.println("PHE!");
-
-		if (e.getEntity().getPassenger() != null) {
-			return;
-		}
-		if (!e.getEntity().getType().equals(EntityType.ENDERMITE)) {
-			return;
-		}
-		System.out.println("IT LANDED! ");
-		Entity passenger = e.getEntity().getPassenger();
-		if (passenger instanceof Player) {
-			Player player = (Player) passenger;
-			player.teleport(player.getLocation().getBlock().getLocation().add(0.5, 0, 0.5));
-			new BukkitRunnable() {
-				@Override
-				public void run() {
-					player.teleport(player.getLocation().add(0f, 2f, 0f));
-				}
-			}.runTaskLater(plugin, 5);
-		}
-	}
+//	This used to use an ender pearl:
+//
+//
+//	@EventHandler
+//	public void onEnderPearlLand(ProjectileHitEvent e) {
+//		if (e.getEntity().getPassenger() != null) {
+//			return;
+//		}
+//		if (!e.getEntity().getType().equals(EntityType.ENDERMITE)) {
+//			return;
+//		}
+//		Entity passenger = e.getEntity().getPassenger();
+//		if (passenger instanceof Player) {
+//			Player player = (Player) passenger;
+//			player.teleport(player.getLocation().getBlock().getLocation().add(0.5, 0, 0.5));
+//			new BukkitRunnable() {
+//				@Override
+//				public void run() {
+//					player.teleport(player.getLocation().add(0f, 2f, 0f));
+//				}
+//			}.runTaskLater(plugin, 5);
+//		}
+//	}
 
 //	@EventHandler
 //	public void onEntityHit(EntityDamageByEntityEvent e) {

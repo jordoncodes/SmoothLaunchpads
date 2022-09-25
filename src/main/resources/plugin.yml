@@ -1,7 +1,7 @@
 main: itzjordon.smoothlaunchpads.SmoothLaunchpads
 name: SmoothLaunchpads
 version: 1.0.0
-authors: [itzjordon]
+author: itzjordon
 api-version: 1.16
 description: SmoothLaunchpads Plugin
 load: POSTWORLD

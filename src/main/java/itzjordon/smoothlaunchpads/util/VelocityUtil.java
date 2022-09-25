@@ -4,7 +4,7 @@ import org.bukkit.util.Vector;
  
 public class VelocityUtil {
     public static Vector velocityForLaunchpad(Vector from, Vector to, int heightGain) {
-        double gravity = 0.115;
+        double gravity = 0.101;
         int difference = to.getBlockY() - from.getBlockY();
         double distHorizontal = Math.sqrt(squaredDist(from, to));
         double max = Math.abs(heightGain)==heightGain ? Math.max(heightGain, (difference + heightGain)) : Math.min(heightGain, (difference + heightGain));
